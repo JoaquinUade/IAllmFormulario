@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app import main
 from app.main import app
+from app.services import ia
 
 
 client = TestClient(app)
@@ -72,8 +72,8 @@ def test_resumen_ia_usa_solo_datos_permitidos(monkeypatch) -> None:
         def __init__(self, **kwargs):
             self.responses = Respuestas()
 
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(main, "datos_para_ia", lambda datos: datos.model_dump_json())
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+    monkeypatch.setattr(ia, "datos_para_ia", lambda datos: datos.model_dump_json())
     monkeypatch.setitem(__import__("sys").modules, "openai", type("OpenAI", (), {"OpenAI": ClienteIA}))
 
     response = client.post(
@@ -104,7 +104,7 @@ def test_resumen_ia_usa_solo_datos_permitidos(monkeypatch) -> None:
 
 
 def test_resumen_ia_requiere_clave(monkeypatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
 
     response = client.post(
         "/resumen-ia",
@@ -116,5 +116,5 @@ def test_resumen_ia_requiere_clave(monkeypatch) -> None:
 
     assert response.status_code == 500
     assert response.json()["detail"] == (
-        "La variable OPENAI_API_KEY no está configurada."
+        "La variable OLLAMA_API_KEY no está configurada."
     )

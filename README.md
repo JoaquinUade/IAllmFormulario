@@ -28,17 +28,24 @@ Recibe el JSON del formulario y devuelve:
 
 `POST /resumen-ia`
 
-Genera un resumen usando OpenAI. Para habilitarlo, configurar la clave antes
-de levantar la API:
+Genera un resumen usando Ollama (compatible con la API de OpenAI). Para
+habilitarlo, configurar las variables antes de levantar la API:
 
 ```powershell
-$env:OPENAI_API_KEY = "tu-clave"
-$env:OPENAI_MODEL = "gpt-4o-mini"
+$env:OLLAMA_API_KEY = "tu-clave-de-ollama"
+$env:OLLAMA_MODEL = "nemotron-3-super:cloud"
+```
+
+Por defecto la API se conecta a Ollama Cloud (`https://ollama.com/v1`). Para
+usar un servidor local, configurar también:
+
+```powershell
+$env:OLLAMA_BASE_URL = "http://localhost:11434/v1"
 ```
 
 La API solo envía a la IA los campos comerciales definidos en los modelos
 Pydantic; ignora CUIL, IDs y precio del vehículo. Si no se configura
-`OPENAI_API_KEY`, `/resumen-ia` devuelve un error explícito y `/resumen`
+`OLLAMA_API_KEY`, `/resumen-ia` devuelve un error explícito y `/resumen`
 continúa funcionando sin IA.
 
 El servicio está preparado para Render mediante [`render.yaml`](./render.yaml).
