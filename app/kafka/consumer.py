@@ -165,18 +165,31 @@ async def start_consumer() -> None:
     if _consumer is not None:
         return
 
-    await _asegurar_topicos()
+    try:
+        await _asegurar_topicos()
 
-    _consumer = AIOKafkaConsumer(
-        kafka_settings.topic_resumen_solicitado,
-        bootstrap_servers=kafka_settings.bootstrap_servers,
-        group_id=kafka_settings.consumer_group_id,
-        client_id=kafka_settings.client_id,
-        auto_offset_reset="earliest",
-        value_deserializer=lambda value: value,
-        **_seguridad(),
-    )
-    await _consumer.start()
+        _consumer = AIOKafkaConsumer(
+            kafka_settings.topic_resumen_solicitado,
+            bootstrap_servers=kafka_settings.bootstrap_servers,
+            group_id=kafka_settings.consumer_group_id,
+            client_id=kafka_settings.client_id,
+            auto_offset_reset="earliest",
+            value_deserializer=lambda value: value,
+            **_seguridad(),
+        )
+        await _consumer.start()
+    except Exception as exc:
+        # Si Kafka no está disponible, la API sigue levantando; solo queda
+        # desactivado el consumidor de resúmenes. Sin esto, el fallo de conexión
+        # tumba todo el servicio en el arranque.
+        logger.error(
+            "No se pudo iniciar el consumer de Kafka (la API sigue operativa): %s",
+            exc,
+        )
+        if _consumer is not None:
+            _consumer = None
+        return
+
     logger.info(
         "Consumer Kafka iniciado: topic=%s group_id=%s",
         kafka_settings.topic_resumen_solicitado,

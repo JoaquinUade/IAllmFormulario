@@ -11,6 +11,16 @@ services:
         sync: false
       - key: KAFKA_ENABLED
         value: "true"
+      - key: KAFKA_SECURITY_PROTOCOL
+        value: "SASL_SSL"
+      - key: KAFKA_SASL_MECHANISM
+        value: "PLAIN"
+      - key: KAFKA_SASL_USERNAME
+        sync: false
+      - key: KAFKA_SASL_PASSWORD
+        sync: false
+      - key: KAFKA_SSL_CAFILE
+        value: "ca.pem"
       - key: CLIENTES_URL
         sync: false
       - key: VEHICULOS_URL

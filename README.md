@@ -73,4 +73,8 @@ Variables adicionales:
 | `KAFKA_TOPIC_RESUMEN_GENERADO` | Topic de salida | `resumen-generado` |
 | `KAFKA_CONSUMER_GROUP` | Grupo consumidor | `resumen-ia-service` |
 | `KAFKA_CLIENT_ID` | ID del cliente Kafka | `resumen-ia-microservice` |
+| `KAFKA_SECURITY_PROTOCOL` | Protocolo de seguridad (Aiven: `SASL_SSL`) | `SASL_SSL` |
+| `KAFKA_SASL_MECHANISM` | Mecanismo SASL (Aiven: `PLAIN`) | `PLAIN` |
+| `KAFKA_SASL_USERNAME` / `KAFKA_SASL_PASSWORD` | Credenciales SASL del broker | `avnadmin` / `...` |
+| `KAFKA_SSL_CAFILE` | Certificado CA (Aiven exige `ca.pem`) | `ca.pem` |
 
