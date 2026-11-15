@@ -65,6 +65,7 @@ def _armar_cliente_potencial(payload: dict, cliente: dict, vehiculo: dict) -> Cl
             "modelo": vehiculo.get("modelo"),
             "anio": vehiculo.get("anio"),
         },
+        patente=payload.get("patente"),
         anticipo=_a_int(payload.get("anticipo")),
         permuta={
             "tienePermuta": bool(permuta.get("tienePermuta", False)),

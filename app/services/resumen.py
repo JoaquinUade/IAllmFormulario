@@ -41,6 +41,11 @@ def generar_resumen(datos: ClientePotencial) -> str:
         f"{datos.vehiculo.marca} {datos.vehiculo.modelo} "
         f"({datos.vehiculo.anio})"
     )
+    patente = (
+        f" Patente en parte de pago: {datos.patente}."
+        if datos.patente
+        else ""
+    )
     anticipo = (
         formato_pesos(datos.anticipo)
         if datos.anticipo is not None
@@ -66,7 +71,7 @@ def generar_resumen(datos: ClientePotencial) -> str:
     return "\n".join(
         [
             f"Cliente: {nombre}.",
-            f"Vehículo seleccionado: {vehiculo}.",
+            f"Vehículo seleccionado: {vehiculo}.{patente}",
             f"Ubicación: {texto_ubicacion(datos.ubicacion)}. Anticipo: {anticipo}.",
             f"Permuta: {texto_permuta(datos.permuta)}. Financiación: {financiacion}.",
             f"Conclusión comercial: {conclusion}",

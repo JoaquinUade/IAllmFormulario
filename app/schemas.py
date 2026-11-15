@@ -42,6 +42,7 @@ class ClientePotencial(BaseModel):
 
     cliente: Cliente
     vehiculo: Vehiculo
+    patente: str | None = None
     anticipo: Annotated[int, Field(ge=0)] | None = None
     permuta: Permuta | None = None
     ubicacion: Ubicacion | None = None
