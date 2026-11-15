@@ -55,6 +55,17 @@ kafka_enabled = _parse_bool(os.getenv("KAFKA_ENABLED"), default=True)
 CLIENTES_URL = os.getenv("CLIENTES_URL", "http://localhost:8082")
 VEHICULOS_URL = os.getenv("VEHICULOS_URL", "http://localhost:8083")
 
+# Credencial de ia-resumen ante el orquestador (el API Gateway). Obligatoria si CLIENTES_URL y
+# VEHICULOS_URL apuntan al orquestador (<orquestador>/api); vacía si se llama directo a los servicios.
+ORQUESTADOR_CLAVE_SERVICIO = os.getenv("ORQUESTADOR_CLAVE_SERVICIO") or None
+
+
+def headers_de_servicio() -> dict[str, str]:
+    """Headers con los que ia-resumen se identifica ante el orquestador (vacío si no hay clave)."""
+    if not ORQUESTADOR_CLAVE_SERVICIO:
+        return {}
+    return {"X-Origen-Servicio": "ia-resumen", "X-Clave-Servicio": ORQUESTADOR_CLAVE_SERVICIO}
+
 # Tópicos a asegurar al arrancar (Aiven no auto-crea tópicos).
 kafka_topics = [
     kafka_settings.topic_resumen_solicitado,

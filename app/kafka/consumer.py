@@ -20,6 +20,7 @@ from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 from app.kafka.config import (
     CLIENTES_URL,
     VEHICULOS_URL,
+    headers_de_servicio,
     kafka_enabled,
     kafka_settings,
     kafka_topics,
@@ -78,7 +79,7 @@ async def _enriquecer(payload: dict) -> ClientePotencial:
     cliente_id = payload.get("clienteId")
     vehiculo_id = payload.get("vehiculoId")
 
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, headers=headers_de_servicio()) as client:
         cliente: dict = {}
         if cliente_id:
             try:
