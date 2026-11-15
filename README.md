@@ -67,6 +67,7 @@ Variables adicionales:
 |----------|-------------|---------|
 | `CLIENTES_URL` | URL del microservicio de clientes | `http://localhost:8082` |
 | `VEHICULOS_URL` | URL del microservicio de vehículos | `http://localhost:8083` |
+| `ORQUESTADOR_CLAVE_SERVICIO` | Credencial de ia-resumen ante el orquestador (API Gateway). Obligatoria si `CLIENTES_URL` y `VEHICULOS_URL` apuntan al orquestador (`<orquestador>/api`): se manda en `X-Clave-Servicio`, junto con `X-Origen-Servicio: ia-resumen`. Vacía si se llama directo a los servicios | `(32+ caracteres)` |
 | `KAFKA_ENABLED` | Activa/desactiva el consumidor Kafka | `true` |
 | `KAFKA_BOOTSTRAP_SERVERS` | Servidores Kafka | `localhost:9092` |
 | `KAFKA_TOPIC_RESUMEN_SOLICITADO` | Topic de entrada | `resumen-solicitado` |
