@@ -1,9 +1,10 @@
-"""Consumidor de `resumen-solicitado` que genera el resumen con IA.
+"""Consumidor del comando `GenerarResumen` (en `crm.comandos`, con `destino: ia-resumen`).
 
-Por cada solicitud, enriquece los datos del lead consultando `clientes` y
+Por cada comando, enriquece los datos del lead consultando `clientes` y
 `vehiculos` por REST (nombre/apellido y marca/modelo/anio), arma el
-`ClientePotencial`, llama a `generar_resumen_con_ia` y publica el resultado en
-`resumen-generado`.
+`ClientePotencial`, llama a `generar_resumen_con_ia` y publica el evento
+`ResumenGenerado` en `crm.eventos`. Los comandos de otros servicios se ignoran;
+el que agota sus reintentos se manda a `crm.dlt`.
 """
 
 from __future__ import annotations
@@ -18,6 +19,9 @@ from aiokafka import AIOKafkaConsumer
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
 from app.kafka.config import (
+    SERVICIO,
+    espera_reintento_segundos,
+    reintentos_comando,
     CLIENTES_URL,
     VEHICULOS_URL,
     headers_de_servicio,
@@ -26,7 +30,7 @@ from app.kafka.config import (
     kafka_topics,
     _seguridad,
 )
-from app.kafka.producer import publish_resumen_generado
+from app.kafka.producer import publish_dlt, publish_resumen_generado
 from app.schemas import ClientePotencial
 from app.services.ia import generar_resumen_con_ia
 
@@ -101,12 +105,12 @@ async def _enriquecer(payload: dict) -> ClientePotencial:
     return _armar_cliente_potencial(payload, cliente, vehiculo)
 
 
-async def handle_resumen_solicitado(message_value: dict) -> None:
+async def handle_generar_resumen(message_value: dict) -> None:
     payload = message_value.get("payload", message_value)
     lead_id = payload.get("leadId")
     correlation_id = message_value.get("correlationId")
 
-    logger.info("Resumen solicitado: leadId=%s", lead_id)
+    logger.info("Resumen a generar: leadId=%s", lead_id)
 
     datos = await _enriquecer(payload)
     # La llamada a Ollama es bloqueante; se corre en un thread para no bloquear el loop.
@@ -144,16 +148,48 @@ async def _asegurar_topicos() -> None:
         logger.warning("No se pudieron asegurar los tópicos de Kafka: %s", exc)
 
 
+async def _despachar(message_value: dict) -> None:
+    """Atiende el comando si es para ia-resumen; ignora los de otros servicios y los que no conoce."""
+    if message_value.get("destino") != SERVICIO:
+        return
+    if message_value.get("eventType") != "GenerarResumen":
+        logger.warning("Comando desconocido para ia-resumen: %s", message_value.get("eventType"))
+        return
+    await handle_generar_resumen(message_value)
+
+
+async def _procesar_con_reintentos(message) -> None:
+    """Reintenta un comando que falla; si agota los intentos lo manda a `crm.dlt` y sigue con el siguiente."""
+    try:
+        value = json.loads(message.value.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        logger.error("Mensaje con JSON inválido en %s: %s", message.topic, exc)
+        return
+    if not isinstance(value, dict) or value.get("destino") != SERVICIO:
+        return  # no es para ia-resumen: sin trabajo ni logs de ruido
+    espera = espera_reintento_segundos
+    for intento in range(1, reintentos_comando + 1):
+        try:
+            await _despachar(value)
+            return
+        except Exception as exc:
+            logger.warning(
+                "Falló %s (intento %s/%s): %s", value.get("eventType"), intento, reintentos_comando, exc
+            )
+            if intento < reintentos_comando:
+                await asyncio.sleep(espera)
+                espera *= 2
+    logger.error("Comando %s agotó sus reintentos: se envía a la DLT.", value.get("eventType"))
+    try:
+        await publish_dlt(message.value, message.key)
+    except Exception as exc:
+        logger.exception("No se pudo enviar el comando a la DLT: %s", exc)
+
+
 async def consume_messages(consumer: AIOKafkaConsumer) -> None:
     try:
         async for message in consumer:
-            try:
-                value = json.loads(message.value.decode("utf-8"))
-                await handle_resumen_solicitado(value)
-            except json.JSONDecodeError as exc:
-                logger.error("Mensaje con JSON inválido: %s", exc)
-            except Exception as exc:
-                logger.exception("Error procesando resumen-solicitado: %s", exc)
+            await _procesar_con_reintentos(message)
     finally:
         await consumer.stop()
 
@@ -170,7 +206,7 @@ async def start_consumer() -> None:
         await _asegurar_topicos()
 
         _consumer = AIOKafkaConsumer(
-            kafka_settings.topic_resumen_solicitado,
+            kafka_settings.topic_comandos,
             bootstrap_servers=kafka_settings.bootstrap_servers,
             group_id=kafka_settings.consumer_group_id,
             client_id=kafka_settings.client_id,
@@ -193,7 +229,7 @@ async def start_consumer() -> None:
 
     logger.info(
         "Consumer Kafka iniciado: topic=%s group_id=%s",
-        kafka_settings.topic_resumen_solicitado,
+        kafka_settings.topic_comandos,
         kafka_settings.consumer_group_id,
     )
 

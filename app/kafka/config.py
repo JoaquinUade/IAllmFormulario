@@ -15,8 +15,9 @@ load_dotenv()
 @dataclass(frozen=True)
 class KafkaSettings:
     bootstrap_servers: str
-    topic_resumen_solicitado: str
-    topic_resumen_generado: str
+    topic_comandos: str
+    topic_eventos: str
+    topic_dlt: str
     consumer_group_id: str
     client_id: Optional[str] = None
     security_protocol: Optional[str] = None
@@ -34,12 +35,11 @@ def _parse_bool(value: Optional[str], default: bool = False) -> bool:
 
 kafka_settings = KafkaSettings(
     bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-    topic_resumen_solicitado=os.getenv(
-        "KAFKA_TOPIC_RESUMEN_SOLICITADO", "resumen-solicitado"
-    ),
-    topic_resumen_generado=os.getenv(
-        "KAFKA_TOPIC_RESUMEN_GENERADO", "resumen-generado"
-    ),
+    # Los tres tópicos del ecosistema (contrato: docs/08 del orquestador): escucha comandos,
+    # publica hechos en eventos y manda a la dlt lo que agotó sus reintentos.
+    topic_comandos=os.getenv("KAFKA_TOPICO_COMANDOS", "crm.comandos"),
+    topic_eventos=os.getenv("KAFKA_TOPICO_EVENTOS", "crm.eventos"),
+    topic_dlt=os.getenv("KAFKA_TOPICO_DLT", "crm.dlt"),
     consumer_group_id=os.getenv("KAFKA_CONSUMER_GROUP", "resumen-ia-service"),
     client_id=os.getenv("KAFKA_CLIENT_ID", "resumen-ia-microservice"),
     security_protocol=os.getenv("KAFKA_SECURITY_PROTOCOL"),
@@ -68,9 +68,17 @@ def headers_de_servicio() -> dict[str, str]:
 
 # Tópicos a asegurar al arrancar (Aiven no auto-crea tópicos).
 kafka_topics = [
-    kafka_settings.topic_resumen_solicitado,
-    kafka_settings.topic_resumen_generado,
+    kafka_settings.topic_comandos,
+    kafka_settings.topic_eventos,
+    kafka_settings.topic_dlt,
 ]
+
+# Nombre con el que el orquestador identifica a este servicio en el `destino` de los comandos.
+SERVICIO = "ia-resumen"
+
+# Intentos de procesar un comando antes de mandarlo a la DLT, y espera inicial (se duplica en cada intento).
+reintentos_comando = int(os.getenv("KAFKA_REINTENTOS_COMANDO", "3"))
+espera_reintento_segundos = float(os.getenv("KAFKA_ESPERA_REINTENTO_SEGUNDOS", "2"))
 
 
 def _seguridad() -> dict:
