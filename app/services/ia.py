@@ -21,7 +21,7 @@ def limitar_resumen(resumen: str) -> str:
             status_code=502,
             detail="La IA devolvió un resumen vacío.",
         )
-    return "\n".join(lineas[:5])
+    return "\n".join(lineas[:6])
 
 
 def generar_resumen_con_ia(datos: ClientePotencial) -> str:
@@ -47,12 +47,28 @@ def generar_resumen_con_ia(datos: ClientePotencial) -> str:
     respuesta = cliente_ia.responses.create(
         model=os.getenv("OLLAMA_MODEL", "nemotron-3-super:cloud"),
         instructions=(
-            "Sos un asesor comercial de concesionaria. Generá un resumen "
-            "profesional en español, de hasta cinco líneas. Usá únicamente "
-            "los datos recibidos. No inventes información, no incluyas CUIL, "
-            "identificadores internos, precios del vehículo ni datos ajenos "
-            "al formulario permitido."
-            "Por ultimo incluime un mensaje de hasta dos lineas con un mensaje recomendado para encarar al cliente y cerrar la venta, el cual empieza con mensaje:."
+            "Actuá como asesor comercial de una concesionaria. A partir de los "
+            "datos recibidos en JSON, generá un resumen en español en el "
+            "siguiente formato exacto (una sola línea por punto, sin "
+            "encabezados, viñetas ni texto adicional):\n"
+            "\n"
+            "1. \"[Nombre] [Apellido] se interesa por un [marca] [modelo] ([anio]).\"\n"
+            "2. \"Se encuentra en [provincia], [localidad].\" Omití esta línea si no hay ubicación.\n"
+            "3. \"Dispone de anticipo de $[anticipo].\" y/o \"Ofrece permuta: [descripcion de la permuta].\" "
+            "Incluí esta línea solo si el dato existe; si no hay anticipo ni permuta, omitila.\n"
+            "4. \"Requiere financiación.\" o \"No requiere financiación.\" Incluí esta línea solo si "
+            "solicitaFinanciacion está disponible.\n"
+            "5. \"Recomendación: GO\" o \"Recomendación: NO GO\".\n"
+            "6. \"Mensaje al cliente: ...\" con un mensaje concreto y accionable, de hasta dos líneas, "
+            "para iniciar la conversación y cerrar la venta.\n"
+            "\n"
+            "Reglas:\n"
+            "- Usá únicamente los datos recibidos. No inventes información.\n"
+            "- No incluyas CUIL, identificadores internos, precios del vehículo ni datos ajenos al formulario.\n"
+            "- Criterio GO/NO GO: GO cuando haya señales claras de intención de compra "
+            "(anticipo, permuta con valor o solicitaFinanciacion en true). NO GO cuando falten "
+            "esos datos o la información sea insuficiente para avanzar.\n"
+            "- Los valores opcionales que no estén presentes se omiten en lugar de dejarse vacíos."
         ),
         input=datos_para_ia(datos),
     )
